@@ -1,4 +1,4 @@
-# guru — refactor plan
+# Life Guru — refactor plan
 
 *How to move `guru-core` and `guru-app` from the goal-first product they implement today
 onto the design in [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md).*

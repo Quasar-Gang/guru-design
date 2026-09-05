@@ -1,4 +1,4 @@
-# guru — system design
+# Life Guru — system design
 
 *Implementation specification. [`README.md`](README.md) covers the problem, the core
 features and the architecture. This document covers the model and the mechanism.*

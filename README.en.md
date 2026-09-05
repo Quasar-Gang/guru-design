@@ -1,10 +1,14 @@
 <div align="center">
 
-# guru
+# Life Guru
 
-**English**（this page） · [繁體中文](README.md)
+**English** (this page) · [繁體中文](README.md)
 
-**Find the shape your own data already supports, and one experiment to test it.**
+**Give life goals a basis, and give every day a direction.**
+
+A personal-growth AI coach for people who want to grow but struggle to keep going — it
+finds a direction worth investing in, turns it into a plan that fits their actual ability
+and time, and adjusts the pace through continuous feedback.
 
 ![Status](https://img.shields.io/badge/status-design-D97706)
 [![Prototype](https://img.shields.io/badge/prototype-live-0F9D58)](https://wu0h9625-boop.github.io/guru-intake-prototype/)
@@ -16,49 +20,57 @@
 
 ## Problem and goal
 
-**Nobody can answer *"what is your vision?"* — it asks you to invent something from nothing.**
+Life Guru exists to reduce two costs:
 
-Every goal product starts by asking what you want. For the minority who already know, that
-works. For everyone else it is a wall on screen one, and no amount of clever prompting gets
-past it, because the question presumes an answer that does not exist yet.
+| | Cost | What it looks like |
+|---|---|---|
+| **1** | **Not knowing the direction** | Planning over and over, never starting, running in place |
+| **2** | **The plan breaking down** | Starting, then stopping because the plan doesn't fit how you actually live |
 
-**The target user** is someone who knows something is off but cannot say where they want to
-go — they have a job, a calendar and a résumé, but no sense of direction and no standing to
-write a five-year plan.
+**The target user** wants to grow but struggles to sustain action — they have a job, a
+calendar and a résumé, they know something is off, but they cannot say where they want to
+go and have no standing to write a five-year plan.
 
-So the system never asks what you want. It **reads the traces you have already left** — where
-your hours went, what your résumé keeps repeating — offers six life shapes each with its cost
-stated, says which one your behaviour actually supports, and hands back **a hypothesis you can
-disprove inside one quarter** rather than a vision.
+The root of it: ***"what is your vision?"* asks someone to invent something from nothing.**
+Every goal product on the market starts there. For the minority who already know, that
+works. For everyone else it is a wall on screen one.
+
+So Life Guru does not begin by asking. It **begins from the data the user has already
+left**, shows them their current situation first, then uses a short set of questions to
+fill in what the data cannot explain. Together those become the basis for planning, and
+**spare the user from having to organise themselves from scratch**.
+
+> **The product's core principle:** every recommendation should tell the user
+> **why it is worth trying, what it will cost, and how to start today.**
 
 **Intended impact:** turn "I don't know what I want" into an answer you can walk forward
-from. The cost of choosing wrong drops from five years to one season, and every season it is
-reconciled against real behaviour.
+from, and let a plan survive changes in your life instead of breaking.
 
 ## Core features
 
-The system is two flows.
+Two flows, one for each cost above.
 
-**1 · Explore role model**
+**1 · Explore role model — for "I don't know the direction"**
 
-- **Upload what already exists** — Google Calendar and a résumé PDF; no recall, no new tracking
-- **Build a Profile** — one per user, the system's read of who you are now
-- **Produce multi-dimension Reports** — work / exercise / social / learning / capacity; unclassified time is a first-class result
-- **Recommend 6 Role Model templates** — each states its own cost, and the user chooses
-- **Generate a Milestone tree and Tasks** — Milestones nest; Tasks stay single-level beneath one
-- **Schedule** — place the Tasks on real dates
+- **Start from what already exists** — import Google Calendar and a résumé PDF; no recall, no new tracking
+- **See the current situation first** — build one Profile per user and produce multi-dimension Reports (work / exercise / social / learning / capacity); unclassified time is a first-class result
+- **Short questions fill the gaps** — what the data cannot explain: conditions the user won't accept, and how much time they're willing to give; every question is skippable
+- **Compare ways of living and working through Role Models** — each direction shows **the capabilities to accumulate, the investment and the trade-offs**, cross-checked against personal data to say **what foundations already exist and what is missing**
+- **The user keeps the final say** — the reasoning is laid out, and the user can supplement or correct the AI's judgement
 
-**2 · Review task progress**
+**2 · Review task progress — for "the plan broke down"**
 
-- **The Reviewer runs on a period** — weekly / monthly / quarterly, it reads the user's task progress
-- **Under the threshold, it re-analyzes** — triggered by the numbers, not by the user asking for help
-- **Re-recommend Role Models** — Reports and Recommender re-run on the newest behaviour
-- **Replan after a role change** — the user picks a new Role Model and the Plan Engine rebuilds Milestones, Tasks and the schedule
+- **Break the direction into milestones and concrete tasks** — Milestones nest; Tasks stay single-level beneath one
+- **Schedule daily action against available time** — placed on real dates, respecting how much the user is willing to commit
+- **Completion records and periodic review** — the Reviewer reads task progress weekly, monthly or quarterly
+- **Diagnose what is actually blocking** — whether the task was **too big**, the **time insufficient**, or the **goal itself needs adjusting**
+- **Replan** — when the direction needs to change, analysis and recommendation re-run; once the user picks a new Role Model, the Plan Engine rebuilds Milestones, Tasks and the schedule
 
 > **The design decision that matters:** the Recommender never sees the raw Profile — it reads
 > the multi-dimension Reports. Borrowed from chain-of-thought: producing intermediate,
 > inspectable evidence before reasoning improves precision, and makes every recommendation
-> something the user can **argue with**.
+> something the user can **argue with** — which is how "the user keeps the final say" is
+> actually implemented.
 
 ## System architecture
 
@@ -77,14 +89,15 @@ The system is two flows.
 | **Frontend** | `guru-app` | Upload UI, Report views, Role Model selection, daily tasks and progress check-in |
 | **Backend · API** | API Service | Auth, OAuth, upload and parsing, every app-facing endpoint, job dispatch |
 | **Backend · planning** | Plan Engine | Milestone tree, Task generation, **deterministic** scheduling and rescheduling |
+| **Backend · review** | Reviewer | Reads task progress on a period, diagnoses what is blocking, and re-triggers analysis when needed |
 | **Backend · recommendation** | Role Model Service | Role Model template queries and LLM-backed recommendation |
-| **AI model** | LLM (xAI Grok) | Judgement only: analyze Reports, recommend Role Models, produce the plan template |
+| **AI model** | LLM (xAI Grok) | Judgement only: analyze Reports, recommend Role Models and their reasoning, produce the plan template |
 | **Database** | PostgreSQL · Redis | All state in the former; queues and cache in the latter |
 | **External services** | Google Calendar · Cloudflare R2 | Calendar import and export, uploaded-file storage |
 
-**The LLM does judgement, never arithmetic.** Scheduling, quota maths and progress
-comparison are deterministic code — the same inputs must give the same result, or "was the
-hypothesis disproved?" is a comparison against noise.
+**The LLM does judgement, never arithmetic.** Scheduling, time maths and progress
+comparison are deterministic code — the same inputs must give the same result, or "was this
+blocked by the task being too big or by not enough time?" is a comparison against noise.
 
 The full domain model, invariants, queue jobs and LLM boundary are in
 [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md).
@@ -148,8 +161,8 @@ npm run dev                           # http://localhost:3100
 
 - Flow 1's **intake and direction** is verified end to end by the prototype; **Flow 2 (review task progress) is designed, not yet prototype-verified**
 - The prototype runs on demo data — real Google Calendar and résumé parsing are not wired in
-- Both code repositories currently implement an earlier goal-first model and have not yet converged on the design described here
-- The Reviewer's trigger threshold is undecided — see the open questions in [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)
+- Both code repositories (`guru-core` / `guru-app`) currently implement an earlier goal-first model and have not yet converged on the design described here
+- The Reviewer's trigger threshold — and how it tells "task too big" from "not enough time" from "the goal needs adjusting" — is undecided; see the open questions in [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)
 - Export supports Google Calendar and Markdown only; Notion and Google Sheets are not implemented
 
 **Future work**
