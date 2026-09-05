@@ -16,7 +16,8 @@
 ![授權](https://img.shields.io/badge/license-proprietary-A31515)
 
 [為什麼這樣設計](#為什麼這樣設計) · [六個形狀](#六個形狀) ·
-[規格書](SYSTEM-DESIGN.md) · [試用原型](https://wu0h9625-boop.github.io/guru-intake-prototype/)
+[規格書](SYSTEM-DESIGN.md) · [試用原型](https://wu0h9625-boop.github.io/guru-intake-prototype/) ·
+[程式碼](#程式碼)
 
 </div>
 
@@ -71,6 +72,13 @@
 | [**試用原型**](https://wu0h9625-boop.github.io/guru-intake-prototype/) | 可操作的上傳流程——六個畫面，第五個之前不問任何問題 |
 | [**`SYSTEM-DESIGN.md`**](SYSTEM-DESIGN.md) | 規格書：概念模型、統一語彙、三個站、領域模型與不變量、服務、佇列工作、LLM 邊界（英文） |
 | [`excalidraw/guru_core_concept.excalidraw`](excalidraw/guru_core_concept.excalidraw) | 上面那張白板的可編輯原始檔 |
+
+## 程式碼
+
+| | |
+|---|---|
+| [**`guru-core`**](https://github.com/Quasar-Gang/guru-core) | 後端 · Python 3.12 · FastAPI · PostgreSQL · Redis |
+| [**`guru-app`**](https://github.com/Quasar-Gang/guru-app) | 前端 · React 19 · Next · Cloudflare Worker |
 
 ## 授權
 

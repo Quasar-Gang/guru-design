@@ -17,7 +17,8 @@ you can prove wrong inside one quarter.
 ![License](https://img.shields.io/badge/license-proprietary-A31515)
 
 [Why it works this way](#why-it-works-this-way) · [The six shapes](#the-six-shapes) ·
-[Specification](SYSTEM-DESIGN.md) · [Try the prototype](https://wu0h9625-boop.github.io/guru-intake-prototype/)
+[Specification](SYSTEM-DESIGN.md) · [Try the prototype](https://wu0h9625-boop.github.io/guru-intake-prototype/) ·
+[Repositories](#repositories)
 
 </div>
 
@@ -75,6 +76,13 @@ Picking one is not a commitment — it just gives the next step something to com
 | [**Try the prototype**](https://wu0h9625-boop.github.io/guru-intake-prototype/) | The intake flow, running — six screens, no question until the fifth |
 | [**`SYSTEM-DESIGN.md`**](SYSTEM-DESIGN.md) | The specification: concept model, language, all three stations, domain model and invariants, services, jobs, LLM boundary |
 | [`excalidraw/guru_core_concept.excalidraw`](excalidraw/guru_core_concept.excalidraw) | The canvas above, editable |
+
+## Repositories
+
+| | |
+|---|---|
+| [**`guru-core`**](https://github.com/Quasar-Gang/guru-core) | Backend · Python 3.12 · FastAPI · PostgreSQL · Redis |
+| [**`guru-app`**](https://github.com/Quasar-Gang/guru-app) | Frontend · React 19 · Next · Cloudflare Worker |
 
 ## License
 
