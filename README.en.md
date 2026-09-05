@@ -192,9 +192,13 @@ npm run dev                           # http://localhost:3100
 
 ## Team
 
-| Name | Role |
-| --- | --- |
-| _TODO_ | _TODO_ |
+| Name | Email | Role |
+| --- | --- | --- |
+| Yoshi (橋本高佳) | <yoshi4868686@gmail.com> | Backend / Architecture |
+| Steven | <gummy789j@gmail.com> | Infra / Architecture |
+| Lynn | <wu0h9625@gmail.com> | UI / UX |
+| Freddie (周森翔) | <remix0622@gmail.com> | Business Insight |
+| 小測 (陳鈺培) | <hosailei711@gmail.com> | Consultant |
 
 ## License
 

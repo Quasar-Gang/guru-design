@@ -193,9 +193,13 @@ npm run dev                           # http://localhost:3100
 
 ## 團隊成員
 
-| 姓名 | 分工 |
-| --- | --- |
-| _TODO_ | _TODO_ |
+| 姓名 | Email | 分工 |
+| --- | --- | --- |
+| 橋本高佳（Yoshi） | <yoshi4868686@gmail.com> | 後端 / 架構 |
+| Steven | <gummy789j@gmail.com> | 基礎架構 / 架構 |
+| Lynn | <wu0h9625@gmail.com> | UI / UX |
+| 周森翔（Freddie） | <remix0622@gmail.com> | 商業洞察 |
+| 陳鈺培（小測） | <hosailei711@gmail.com> | 顧問 |
 
 ## License
 
