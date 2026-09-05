@@ -1,52 +1,85 @@
 # guru — system design
 
-*Implementation specification. [`README.md`](README.md) covers the product philosophy —
-why the system reads instead of asking. This document covers the model and the mechanism.*
+*Implementation specification. [`README.md`](README.md) covers the problem, the core
+features and the architecture. This document covers the model and the mechanism.*
 
-**Status of each station**
+**Status**
 
-| Station | Status |
-|---|---|
-| 1 · Intake and Direction | **Verified end-to-end by the prototype** |
-| 2 · The Plan | Designed from the concept canvas — **not yet prototype-verified** |
-| 3 · Quarterly Reconciliation | Designed from the concept canvas — **not yet prototype-verified** |
+| Flow | Stage | Status |
+|---|---|---|
+| **1 · Explore role model** | Intake → Profile → Reports → Fit Verdicts → Direction Hypothesis | **Verified end-to-end by the prototype** |
+| **1 · Explore role model** | Plan Engine → Milestones → Tasks → Schedule | Designed from the concept canvas — **not yet prototype-verified** |
+| **2 · Review task progress** | Reviewer → re-analysis → re-recommendation → replan | Designed from the concept canvas — **not yet prototype-verified** |
 
 ## Contents
 
-- [The three stations](#the-three-stations) — the loop
+- [The two flows](#the-two-flows) — explore, then review
 - [The concept model](#the-concept-model) — the canvas's eleven steps
 - [The language](#the-language) — the ubiquitous vocabulary
-- [Station 1 · Intake and Direction](#station-1--intake-and-direction)
-- [Station 2 · The Plan](#station-2--the-plan)
-- [Station 3 · Quarterly Reconciliation](#station-3--quarterly-reconciliation)
+- [Flow 1 · Intake and Direction](#flow-1--intake-and-direction)
+- [Flow 1 · The Plan](#flow-1--the-plan)
+- [Flow 2 · Review and Reconciliation](#flow-2--review-and-reconciliation)
 - [Domain model](#domain-model) — aggregates and invariants
 - [System design](#system-design) — contexts, jobs, the LLM boundary
 - [Open questions](#open-questions)
 
 ---
 
-## The three stations
+## The two flows
+
+The product is two flows over one model. The first runs when a User arrives with no
+direction. The second runs on a period, without being asked.
 
 ```mermaid
 flowchart LR
-    S1["Station 1 · Intake &amp; Direction<br/><i>read the data,<br/>borrow a Role Model</i>"]
-    H(["Direction Hypothesis v0<br/><i>dated · sourced · never overwritten</i>"])
-    S2["Station 2 · The Plan<br/><i>Milestones · Tasks · Schedule</i>"]
-    S3["Station 3 · Quarterly Reconciliation<br/><i>behaviour vs the Hypothesis</i>"]
+    subgraph f1 ["Flow 1 · Explore role model"]
+        UP["Uploader"] --> PR[("Profile")] --> AN["Analyzer"]
+        AN --> RP[("Report ×N")] --> RC["Recommender"]
+        RC --> RM[("Role Model ×6")] --> SEL{{"User selects"}}
+        SEL --> PE["Plan Engine"] --> PL[("Milestones · Tasks · Schedule")]
+    end
 
-    S1 --> H --> S2 --> S3
-    S3 -. "does this Role Model still hold?" .-> H
+    subgraph f2 ["Flow 2 · Review task progress"]
+        RV["Reviewer<br/><i>weekly · monthly · quarterly</i>"]
+    end
 
-    style S1 fill:#e8f0fe,stroke:#4169E1
-    style H  fill:#fff4e5,stroke:#D97706
-    style S3 fill:#e9f7ef,stroke:#0F9D58
+    PL -->|"1 · read task progress"| RV
+    RV -->|"2 · under threshold → re-analyze"| AN
+    RV -.->|"on target → nothing happens"| PL
+
+    style RV fill:#fff4e5,stroke:#D97706
+    style RP fill:#e8f0fe,stroke:#4169E1
+    style PL fill:#e9f7ef,stroke:#0F9D58
 ```
 
-**The loop is the product.** A quarter is short enough that a wrong direction costs one
-season instead of five years, and long enough that behaviour has time to say something.
-Station 3 does not score anyone — it reconciles what was actually done against what the
-Direction Hypothesis predicted, and asks whether the Role Model still counts. Answer that,
-and Station 1 runs again with a `v1`.
+**Flow 2 reuses Flow 1's machinery entirely.** The Reviewer adds one thing — a periodic read
+of Task progress against a threshold — and everything downstream of it (Analyzer, Reports,
+Recommender, Role Models, Plan Engine) is the same code path Flow 1 uses. The only
+difference is what triggers it and that the Profile now has execution history in it.
+
+### The Reviewer
+
+The one genuinely new component.
+
+| | |
+|---|---|
+| **Runs** | On a period — week, month or quarter |
+| **Reads** | Task progress for the active Plan |
+| **Decides** | Progress **under the threshold** → trigger re-analysis. On target → do nothing |
+| **Does not** | Score the user, or send a reminder. It re-opens the direction question, or stays silent |
+
+Two properties matter.
+
+**It is triggered by numbers, not by the user.** Someone whose plan has stopped matching
+their life is the least likely person to go and ask for a new plan. Making the review
+automatic is what stops a stale direction from surviving by inertia.
+
+**Falling behind is a signal about the direction, not about the person.** The response to
+missed tasks is to re-run the analysis and offer different Role Models — not to nag. That is
+why the Reviewer’s output path leads back to the Analyzer rather than to a notification.
+
+> **Open:** the threshold itself is undecided — a fixed completion rate, or behaviour-drift
+> detection against the Direction Hypothesis. See [Open questions](#open-questions).
 
 ---
 
@@ -173,11 +206,11 @@ the team can adopt, rename or reject them deliberately rather than absorb them b
 **Why the canvas has no word for these:** on the canvas every arrow points forward — nothing
 returns from Schedule, Task or Milestone. That is a correct description of a single pass,
 but the product is a loop, and a loop needs something to compare against. The Direction
-Hypothesis is that something; the return edge is what Station 3 rides.
+Hypothesis is that something; the return edge is what the Reviewer rides.
 
 ---
 
-## Station 1 · Intake and Direction
+## Flow 1 · Intake and Direction
 
 *Prototype-verified.* Six stages. **No question is asked until stage 5.**
 
@@ -331,7 +364,7 @@ managing a team", "not leaving this city", "not an unstable income" — each eli
 the candidate paths at a stroke.
 
 **Q-2 asks about the *pattern* of quitting, not its reasons.** This is the question that
-earns its keep later: it is the baseline that lets Station 3 distinguish a **growth-driven
+earns its keep later: it is the baseline that lets Flow 2 distinguish a **growth-driven
 revision** from an **avoidance-driven** one when the Plan changes. The system already has
 the evidence to ask it well — the demo user's calendar shows exercise going to zero after
 week 6, plus two other activities that ran 3–4 weeks and vanished.
@@ -363,10 +396,10 @@ Two ways forward from here: hand it to the Plan Engine, or try another Role Mode
 
 ---
 
-## Station 2 · The Plan
+## Flow 1 · The Plan
 
 > **Designed, not yet prototype-verified.** Specified from the concept canvas (steps 9–11).
-> The Station-2 prototype exists as a separate artifact that was not reachable when this
+> The plan-drafting prototype exists as a separate artifact that was not reachable when this
 > document was written.
 
 The Plan Engine takes the **Direction Hypothesis** — not a goal string — and builds the
@@ -426,10 +459,10 @@ This constraint is inherited from the existing backend and is worth keeping — 
 
 ---
 
-## Station 3 · Quarterly Reconciliation
+## Flow 2 · Review and Reconciliation
 
 > **Designed, not yet prototype-verified.** Specified from the concept canvas and the
-> Station-1 contract. The Station-3 prototype exists as a separate artifact that was not
+> Flow-1 contract. The review prototype exists as a separate artifact that was not
 > reachable when this document was written.
 
 At the review date stamped on the Direction Hypothesis, the same Analyzer runs over the same
@@ -444,7 +477,7 @@ flowchart LR
     CMP --> Q(["Does this Role Model<br/>still hold?"])
     Q -->|"holds"| KEEP["Keep v0 · new Probe"]
     Q -->|"revise"| V1[("Direction<br/>Hypothesis v1")]
-    Q -->|"replace"| S1["Back to Station 1"]
+    Q -->|"replace"| S1["Back to Flow 1"]
 
     style HY0 fill:#fff4e5,stroke:#D97706
     style Q fill:#e9f7ef,stroke:#0F9D58
@@ -455,7 +488,7 @@ Three properties define this station.
 **The output is a question, not a score.** Nothing here grades the user. The reconciliation
 produces a comparison and one decision to make.
 
-**Unclassified time is where it earns its keep.** In Station 1 the unclassified 16% was
+**Unclassified time is where it earns its keep.** In Flow 1 the unclassified 16% was
 merely flagged. Here it has a baseline to be measured against: time that fits no named
 dimension, in a quarter with a stated direction, is the sharpest available signal about the
 gap between the described life and the executed one.
@@ -517,7 +550,7 @@ erDiagram
 | **Milestone** | `id`, `plan_id`, `parent_id`, `title`, `metric`, `target_date`, `position`, `status` | `parent_id` nullable → **tree**. |
 | **Task** | `id`, `milestone_id`, `title`, `description`, `task_type`, `duration_minutes`, `status`, `completed_at` | `milestone_id` **NOT NULL**, and a Task has no children. Flat by construction. |
 | **ScheduleSlot** | `id`, `task_id`, `start_at`, `end_at`, `all_day`, `external_ref`, `synced_at` | The projection of a Task onto real time. Deterministic given its inputs. |
-| **Reconciliation** | `id`, `hypothesis_id`, `period_start`, `period_end`, `comparison`, `outcome`, `revision_kind`, `next_version` | `outcome ∈ holds · revise · replace`; `revision_kind ∈ growth · avoidance`, classified against Q-2. |
+| **Review** | `id`, `plan_id`, `hypothesis_id`, `period_start`, `period_end`, `progress_rate`, `threshold`, `triggered`, `comparison`, `outcome`, `revision_kind`, `next_version` | `outcome ∈ holds · revise · replace`; `revision_kind ∈ growth · avoidance`, classified against Q-2. |
 
 ### Invariants
 
@@ -556,7 +589,7 @@ flowchart TB
     subgraph worker ["Analysis / Plan Worker · queue"]
         ANA["analysis<br/><i>Analyzer · Report</i>"]
         PLAN["planning<br/><i>Plan Engine · Scheduler</i>"]
-        REC["reconciliation<br/><i>Station 3</i>"]
+        REC["reconciliation<br/><i>Reviewer · Flow 2</i>"]
     end
 
     subgraph catalog ["Catalog Service · HTTP"]
@@ -594,7 +627,7 @@ authoritative state and Redis only as a cache.
 | `analysis.run` | user requests analysis | Reports (step 5) |
 | `recommend.run` | analysis finished | 6 × FitVerdict + Probe (steps 6–8a) |
 | `plan.generate` | hypothesis created | Milestone tree, Tasks, Schedule (steps 9–11) |
-| `reconcile.run` | review date reached | Reconciliation |
+| `review.run` | the Reviewer's period elapses | A Review; when `progress_rate < threshold`, it enqueues `analysis.run` |
 
 ### Where the model is allowed to think, and where it is not
 
@@ -618,7 +651,7 @@ new prompts and two new purposes (`analyze`, `verdict`), not a new mechanism.
 
 **The determinism line is a product requirement, not an engineering preference.** The
 Direction Hypothesis is only falsifiable if the thing it predicted was computed the same
-way twice. If the Schedule can drift between two runs of the same inputs, Station 3 is
+way twice. If the Schedule can drift between two runs of the same inputs, the Reviewer is
 comparing against noise.
 
 ---
@@ -637,9 +670,10 @@ Deliberately unresolved — each one changes the model, and each is the team's c
 3. **Is the Probe the first Milestone, or its own object?** Modelled here as its own object
    hanging off the Fit Verdict, because it exists *before* any Plan does. The alternative —
    the Probe becomes Milestone #1 once the Plan is generated — is defensible.
-4. **What triggers Station 3?** The review date on the Hypothesis, or a behaviour-drift
-   threshold that can fire early? The prototype states a date; drift detection is the more
-   useful behaviour and the more expensive one.
+4. **What is the Reviewer's threshold?** A fixed task-completion rate, the review date on
+   the Hypothesis, or behaviour-drift detection against it? The canvas says "under the
+   threshold" without fixing one. Drift detection is the more useful behaviour and the more
+   expensive one, and it is the single biggest open question in Flow 2.
 5. **Language split.** The product interface is Traditional Chinese and the code, docs and
    internal strings are English, enforced by `check-language.mjs`. Does the new domain keep
    that split?
@@ -652,5 +686,5 @@ Deliberately unresolved — each one changes the model, and each is the team's c
 
 | | |
 |---|---|
-| [`README.md`](README.md) · [`README.zh-TW.md`](README.zh-TW.md) | What the system is and what it is responsible for (English / 繁體中文) |
+| [`README.md`](README.md) · [`README.en.md`](README.en.md) | Problem, core features and architecture (繁體中文 / English) |
 | [`REFACTOR-PLAN.md`](REFACTOR-PLAN.md) | Migrating `guru-core` / `guru-app` onto this design |

@@ -137,5 +137,5 @@ them before sprouting the new tables.
 
 | | |
 |---|---|
-| [`README.md`](README.md) · [`README.zh-TW.md`](README.zh-TW.md) | What the system is and what it is responsible for (English / 繁體中文) |
+| [`README.md`](README.md) · [`README.en.md`](README.en.md) | Problem, core features and architecture (繁體中文 / English) |
 | [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md) | The target design this plan migrates toward |
