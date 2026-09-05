@@ -205,4 +205,4 @@ npm run dev                           # http://localhost:3100
 Proprietary. Copyright (c) 2026 Quasar-Gang, all rights reserved. No licence to use, copy,
 modify or distribute is granted without written permission.
 
-> _TODO: add a `LICENSE` file at the repository root._
+See [`LICENSE`](./LICENSE) at the repository root for the full terms.

@@ -206,4 +206,4 @@ npm run dev                           # http://localhost:3100
 Proprietary. Copyright (c) 2026 Quasar-Gang, all rights reserved.
 版權所有，未經書面同意不得使用、重製、修改或散布。
 
-> _TODO：請在儲存庫根目錄加入 `LICENSE` 檔案。_
+完整條款請見儲存庫根目錄的 [`LICENSE`](./LICENSE)。
