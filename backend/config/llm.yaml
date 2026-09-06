@@ -1,0 +1,48 @@
+# One provider, not a provider list. Every value below is an environment variable
+# with a default, so switching between a local runtime and a hosted API is a change
+# of environment, never a change of this file or of any use case.
+#
+# The defaults describe the hosted baseline (xAI grok-4.6 over its OpenAI-compatible
+# endpoint). The local runtime is still one env change away: see the table in the
+# README. Tests override LLM_ADAPTER to "fake".
+provider:
+  adapter: ${LLM_ADAPTER:-fake}                              # openai_compat | anthropic | fake
+  base_url: ${LLM_BASE_URL:-https://api.x.ai/v1}
+  api_key: ${LLM_API_KEY:-dummy}
+  model: ${LLM_MODEL:-grok-4.6}
+  structured_output: ${LLM_STRUCTURED_OUTPUT:-json_schema}   # guided_json | json_schema | tool_use | prompt
+  max_context_tokens: ${LLM_MAX_CONTEXT:-500000}
+  timeout_seconds: ${LLM_TIMEOUT:-240}
+  # 0 for a hosted provider, which has no reason to serialise our requests; set 1
+  # for a local runtime that holds one set of weights and one KV cache.
+  concurrency: ${LLM_CONCURRENCY:-0}
+
+# Three purposes, because the system asks a model for exactly three kinds of judgement:
+# read the data, hold a shape against it, lay out the work. Everything else is arithmetic.
+# reasoning_effort is provider-specific and is only sent when non-empty: set
+# LLM_REASONING_EFFORT= (blank) when moving to a provider that does not accept it.
+# grok-4.6 rejects "none" — it always reasons — so the default is "low".
+params:
+  analyze:
+    temperature: 0.2
+    max_output_tokens: 4000
+    reasoning_effort: ${LLM_REASONING_EFFORT:-low}
+  verdict:
+    temperature: 0.3
+    max_output_tokens: 6000
+    reasoning_effort: ${LLM_REASONING_EFFORT:-low}
+  generate:
+    temperature: 0.4
+    max_output_tokens: 4000
+    reasoning_effort: ${LLM_REASONING_EFFORT:-low}
+
+# How much of the Role Model catalogue a call may carry, in tokens. The Recommender scores
+# every template at once and needs the most; the Plan Engine only needs the chosen one.
+budgets:
+  analyze: 200
+  verdict: 2000
+  generate: 600
+
+retry:
+  # Retries when schema or business-rule validation fails, feeding the errors back.
+  max_attempts: 3

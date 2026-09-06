@@ -1,0 +1,13 @@
+.git
+.venv
+.data
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__
+*.py[cod]
+*.egg-info
+docs
+.env
+deployment
+Makefile

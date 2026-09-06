@@ -1,0 +1,111 @@
+# Local stack: the whole system in containers, built from this working tree.
+#
+#   make deploy-up env=local
+#
+# Every secret here is a throwaway development value. Day-to-day development uses
+# the PostgreSQL and Redis already running on 5432 / 6379, so these publish on
+# 5433 / 6380 to avoid a collision.
+#
+# The LLM settings are the exception: they default to the fixtures, and
+# `deployment/local/.env.local` overrides them with a real provider when you want
+# to test against one. That file is gitignored, because it carries a key.
+name: guru-core-local
+
+# The image is built once, by the `api` service; the other three only run it.
+# Four services declaring the same build would race on the same tag.
+x-app: &app
+  image: guru-core:local
+  restart: unless-stopped
+  environment: &app-env
+    DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/guru_core
+    REDIS_URL: redis://redis:6379/0
+    STORAGE_BACKEND: local
+    STORAGE_LOCAL_ROOT: /data/storage
+    STORAGE_PUBLIC_BASE_URL: http://127.0.0.1:8000/v1/files
+    STORAGE_SIGNING_SECRET: compose-storage-secret
+    JWT_SECRET: compose-jwt-secret
+    CATALOG_API_KEY: compose-catalog-key
+    # Compose-only key. Every deployment generates its own; refresh tokens are
+    # never stored unencrypted.
+    OAUTH_TOKEN_ENC_KEY: sLrt-8fSPiXBBdQhzlz47gTMLF89k0ODWxr8NPgwQcA=
+    # Local verification only. Never enable this outside compose.
+    ALLOW_FAKE_LOGIN: "1"
+    # Fixtures unless deployment/local/.env.local says otherwise.
+    LLM_ADAPTER: ${LLM_ADAPTER:-fake}
+    LLM_BASE_URL: ${LLM_BASE_URL:-}
+    LLM_API_KEY: ${LLM_API_KEY:-dummy}
+    LLM_MODEL: ${LLM_MODEL:-}
+    LLM_STRUCTURED_OUTPUT: ${LLM_STRUCTURED_OUTPUT:-json_schema}
+    LLM_MAX_CONTEXT: ${LLM_MAX_CONTEXT:-500000}
+    LLM_TIMEOUT: ${LLM_TIMEOUT:-240}
+    LLM_CONCURRENCY: ${LLM_CONCURRENCY:-0}
+    LLM_REASONING_EFFORT: ${LLM_REASONING_EFFORT:-low}
+  volumes:
+    - storage:/data/storage
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: guru-core-local-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: guru_core
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d guru_core"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: guru-core-local-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    <<: *app
+    container_name: guru-core-local-api
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ["cmd.api_server"]
+    ports:
+      - "8000:8000"
+
+  api-worker:
+    <<: *app
+    container_name: guru-core-local-api-worker
+    command: ["cmd.api_worker"]
+
+  engine:
+    <<: *app
+    container_name: guru-core-local-engine
+    command: ["cmd.engine_worker"]
+
+  catalog:
+    <<: *app
+    container_name: guru-core-local-catalog
+    command: ["cmd.catalog_server"]
+    ports:
+      - "8001:8001"
+
+volumes:
+  pgdata:
+  storage:

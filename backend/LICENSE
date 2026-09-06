@@ -1,0 +1,34 @@
+Copyright (c) 2026 Quasar-Gang. All rights reserved.
+
+PROPRIETARY AND CONFIDENTIAL
+
+This software, its source code, documentation, configuration and any
+accompanying materials (the "Software") are the proprietary and confidential
+property of Quasar-Gang.
+
+No licence, express or implied, is granted to any person or entity. Without the
+prior written permission of Quasar-Gang, you may not:
+
+  1. use the Software for any purpose, commercial or otherwise;
+  2. copy, reproduce or store the Software, in whole or in part, by any means;
+  3. modify the Software or create works derived from it;
+  4. publish, distribute, sublicense, sell, rent, lease or otherwise transfer
+     the Software or access to it;
+  5. reverse engineer, decompile or disassemble the Software, except to the
+     extent that this restriction is prohibited by applicable law; or
+  6. remove or alter any copyright, trademark or other proprietary notice.
+
+Access to the Software does not transfer any ownership interest in it. All
+rights not expressly granted in writing are reserved by Quasar-Gang.
+
+Third-party components distributed with or depended upon by the Software remain
+subject to their own licences. Model weights obtained through, or used with, the
+Software are governed by the terms of their respective providers and are not
+covered by this notice.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL QUASAR-GANG BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

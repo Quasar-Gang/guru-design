@@ -1,0 +1,23 @@
+# Role Model tags. A controlled vocabulary, kept small on purpose.
+#
+# Tags are how a user-authored template says which shelf it belongs on, and how the
+# catalogue is filtered. They never decide fit — that is the Fit Verdict's job, and it works
+# from Reports rather than from labels.
+version: 2
+
+namespaces:            # Allow-list. A tag whose prefix is not here is rejected on write.
+  - shape              # the kind of life shape the template describes
+  - area               # which of Q-3's three the template leans on
+  - horizon            # how long the five-year path really takes to show
+
+value_rules:
+  pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"   # lowercase, digits, hyphens
+  max_length: 32
+  max_tags_per_record: 8
+
+enum_only:             # Closed, because code compares these values directly.
+  area: [career, relationships, health]
+  horizon: [months, years, decade]
+
+known_values:          # Recorded for discovery; new values are appended on write.
+  shape: [depth, building, independence, leadership, steadiness, connecting]

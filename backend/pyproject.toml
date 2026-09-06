@@ -1,0 +1,86 @@
+[project]
+name = "guru-core"
+version = "0.1.0"
+description = "coach.ai backend — goal to executable plan"
+license = "LicenseRef-Proprietary"
+requires-python = ">=3.12,<3.13"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+  "pydantic>=2.9",
+  "pydantic-settings>=2.5",
+  "pyyaml>=6.0",
+  "jinja2>=3.1",
+  "redis>=5.3.1",
+  "arq>=0.28.0",
+  "sqlalchemy[asyncio]>=2.0.52",
+  "asyncpg>=0.31.0",
+  "alembic>=1.19.2",
+  "httpx>=0.28.1",
+  "psycopg[binary]>=3.3.5",
+  "openpyxl>=3.1.5",
+  "pypdf>=6.17.0",
+  "python-docx>=1.2.0",
+  "beautifulsoup4>=4.15.0",
+  "icalendar>=7.3.0",
+  "markdown-it-py>=4.2.0",
+  "fastapi>=0.141.1",
+  "uvicorn>=0.52.4",
+  "pyjwt>=2.13.0",
+  "python-multipart>=0.0.32",
+  "cryptography>=50.0.1",
+  "boto3>=1.43.88",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.7",
+  "mypy>=1.13",
+  "import-linter>=2.1",
+  "types-pyyaml",
+  "moto[s3]>=5.2.3",
+  "types-boto3>=1.43.88",
+  "types-openpyxl>=3.1.5.20260827",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["packages", "services", "cmd"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q -m 'not integration'"
+markers = ["integration: needs a live postgres/redis"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["*.md", "migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "TID"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+disallow_any_generics = true
+exclude = ["^migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "conftest"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_any_generics = false
+warn_unused_ignores = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = ["icalendar.*"]
+ignore_missing_imports = true

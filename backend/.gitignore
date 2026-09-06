@@ -1,0 +1,14 @@
+.local/
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.data/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+deployment/production/.env.production
+deployment/local/.env.local
+deployment/*/data/
