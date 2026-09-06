@@ -13,7 +13,7 @@
 [![原型](https://img.shields.io/badge/prototype-live-0F9D58)](https://wu0h9625-boop.github.io/guru-intake-prototype/)
 ![授權](https://img.shields.io/badge/license-proprietary-A31515)
 
-[後端 `guru-core`](https://github.com/Quasar-Gang/guru-core) · [前端 `guru-app`](https://github.com/Quasar-Gang/guru-app) · [原型](https://wu0h9625-boop.github.io/guru-intake-prototype/) · [影片](https://www.youtube.com/watch?v=vP_6S0C3R7Q)
+[後端 `backend/`](backend) · [前端 `frontend/`](frontend) · [原型](https://wu0h9625-boop.github.io/guru-intake-prototype/) · [影片](https://www.youtube.com/watch?v=vP_6S0C3R7Q)
 
 </div>
 
@@ -90,7 +90,7 @@ Life Guru 要降低兩種成本：
 
 | 層 | 元件 | 職責 |
 |---|---|---|
-| **前端** | [`guru-app`](https://github.com/Quasar-Gang/guru-app) | 上傳介面、Report 檢視、Role Model 選擇、每日任務與進度回報 |
+| **前端** | Web App（[`frontend/`](frontend)） | 上傳介面、Report 檢視、Role Model 選擇、每日任務與進度回報 |
 | **後端 · API** | API Service | 認證、OAuth、檔案上傳與解析、所有對前端的 endpoint、工作派送 |
 | **後端 · 規劃** | Plan Engine | Milestone 樹、Task 產生、**決定性**排程與重新排程 |
 | **後端 · 回顧** | Reviewer | 定期讀取任務進度，診斷卡關來源並在需要時觸發重新分析 |
@@ -103,8 +103,23 @@ Life Guru 要降低兩種成本：
 同樣的輸入必須得到同樣的結果，否則「這次卡關是因為任務太大還是時間不足」
 就是在跟雜訊比較。
 
-完整的領域模型、不變量、佇列工作與 LLM 邊界，見 [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)。
-實作分在兩個儲存庫：後端 [`guru-core`](https://github.com/Quasar-Gang/guru-core)，前端 [`guru-app`](https://github.com/Quasar-Gang/guru-app)。
+### 深入技術細節
+
+README 講到「為什麼這樣做」與「長什麼樣子」為止；架構底下的完整規格寫在
+**[`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)**——領域模型、不變量、佇列工作與 LLM 的邊界都在那裡。
+
+| 想知道什麼 | 讀哪裡 |
+|---|---|
+| 兩條流程逐步展開 | [`SYSTEM-DESIGN.md` · The two flows](SYSTEM-DESIGN.md#the-two-flows) |
+| 名詞的精確定義（Profile／Report／Role Model／Milestone…） | [`SYSTEM-DESIGN.md` · The language](SYSTEM-DESIGN.md#the-language) |
+| 聚合、資料表與不變量 | [`SYSTEM-DESIGN.md` · Domain model](SYSTEM-DESIGN.md#domain-model) |
+| 服務切分、佇列工作與 LLM 邊界 | [`SYSTEM-DESIGN.md` · System design](SYSTEM-DESIGN.md#system-design) |
+| 刻意未決的問題 | [`SYSTEM-DESIGN.md` · Open questions](SYSTEM-DESIGN.md#open-questions) |
+| 後端六邊形架構、設定檔與 LLM adapter | [`backend/README.md`](backend/README.md) |
+| 實際 schema 與 OpenAPI 規格 | [`backend/docs/db/schema.md`](backend/docs/db/schema.md) · [`backend/docs/api/`](backend/docs/api) |
+| 前端三個站點、規則引擎與後端對映 | [`frontend/README.md`](frontend/README.md) · [`frontend/docs/API.md`](frontend/docs/API.md) |
+
+實作都在這個儲存庫裡：後端在 [`backend/`](backend)，前端在 [`frontend/`](frontend)。
 
 ## 使用技術
 
@@ -113,7 +128,7 @@ Life Guru 要降低兩種成本：
 | AI 模型 | xAI Grok（`grok-4.6`，預設） | 分類 Profile 訊號、產生 Report、評分 Role Model 契合度、產生計畫模板、敘述回顧結果 |
 | AI 模型 | Anthropic Claude／本地 Ollama · vLLM（可切換） | 同上；以 `LLM_ADAPTER`、`LLM_BASE_URL` 環境變數切換，不需改動程式碼 |
 | 前端 | React 19 · Next 16（vinext）· Vite · TypeScript 5.9 | 網頁客戶端，三個頁面對應三個站點（`/`、`/plan`、`/ledger`） |
-| 前端 | React Server Components · `snapshot-adapter` | 三個站點都在 server component 讀 `guru-core`，bearer token 只留在伺服器端；adapter 是兩套詞彙唯一交會的地方 |
+| 前端 | React Server Components · `snapshot-adapter` | 三個站點都在 server component 讀後端 API，bearer token 只留在伺服器端；adapter 是兩套詞彙唯一交會的地方 |
 | 前端 | mist 設計系統（vendored CSS）· Vitest | 介面樣式，以及規則引擎、後端對映與伺服器渲染測試 |
 | 前端 | Cloudflare Workers · Wrangler | 前端部署，建置為 Worker 相容的 ESM；正式環境的 token 是 Worker secret |
 | 後端 | Python 3.12 · FastAPI · Pydantic 2 · SQLAlchemy 2（async）· Alembic | 三個服務的 API 與資料存取 |
@@ -124,15 +139,19 @@ Life Guru 要降低兩種成本：
 | 工程品質 | ruff · mypy --strict · import-linter · pytest | 六邊形架構的依賴方向由 import-linter 在 CI 擋下，反向 import 直接建置失敗 |
 | 部署 | Docker Compose · DigitalOcean Droplet · Caddy | 單一映像檔，由 entrypoint 決定跑哪一個角色 |
 | 外部服務 | Google OAuth 2.0 · Google Calendar API | 登入，以及行事曆匯入／匯出 |
-| Sponsor 技術 | _TODO：請填入實際使用的 Sponsor 技術與用途_ | |
 
 ## 安裝與執行
 
 需要 Python 3.12、[uv](https://docs.astral.sh/uv/)、Node.js ≥ 22.13、PostgreSQL 與 Redis。
+後端與前端都在這個儲存庫裡，`backend/` 與 `frontend/` 各自獨立建置。
 
 ```bash
-# 1 · 後端 guru-core
-git clone git@github.com:Quasar-Gang/guru-core.git && cd guru-core
+git clone git@github.com:Quasar-Gang/life-guru.git && cd life-guru
+```
+
+```bash
+# 1 · 後端 backend/
+cd backend
 uv sync
 cp .env.example .env                  # 設定 DATABASE_URL / REDIS_URL / LLM_API_KEY / GOOGLE_CLIENT_ID
 uv run alembic upgrade head           # 建立資料庫 schema
@@ -148,11 +167,12 @@ uv run python -m cmd.catalog_server  # HTTP, port 8001
 # 或用容器一次啟動（build + up + migrate + seed）
 make deploy env=local                 # postgres／redis 發佈在 5433 / 6380，避免與本機衝突
 make deploy-smoke env=local           # 端到端跑完整條流程
+make deploy-down env=local            # 收掉整個 stack
 ```
 
 ```bash
-# 2 · 前端 guru-app
-git clone git@github.com:Quasar-Gang/guru-app.git && cd guru-app
+# 2 · 前端 frontend/
+cd frontend
 npm install
 cp .env.example .env.local            # GURU_API_BASE_URL=http://127.0.0.1:8000
                                       # GURU_API_TOKEN=<POST /v1/auth/google 取得的 bearer token>
@@ -165,7 +185,10 @@ npm test                              # 語言檢查 → typecheck → lint → 
 >
 > `.env.local` 可以留空：沒有設定後端時，前端會使用內建的示範資料集，三個站點的互動仍然完整可操作——那是展示路徑，不是壞掉的狀態。
 > `GURU_API_BASE_URL` 必須是絕對的 `http(s)` 位址，其他值一律忽略並改用示範資料。
-> 本機要拿 token，可在 `guru-core` 設 `ALLOW_FAKE_LOGIN=1` 後以 `{"code": "fake:<email>"}` 登入（**僅限本機**）。
+> 本機要拿 token，可在 `backend/.env` 設 `ALLOW_FAKE_LOGIN=1` 後以 `{"code": "fake:<email>"}` 登入（**僅限本機**）。
+>
+> 後端的 `LLM_ADAPTER` 預設是 `fake`，不需要金鑰就能跑完整條流程；要接真的供應商，
+> 改成 `openai_compat` 並填入 `LLM_API_KEY`（容器模式則寫在 `backend/deployment/local/.env.local`）。
 
 ## 作品展示
 
@@ -177,20 +200,20 @@ npm test                              # 語言檢查 → typecheck → lint → 
 **目前限制**
 
 - **沒有登入畫面**：token 由伺服器端設定，整個 app 只讀一個帳號；補上 OAuth 是一段流程，不是一個欄位
-- **接真實資料時不會出現「做了卻沒效果」**：`guru-core` 沒有能力重測的基準與重測，少了兩次測量就無從比較——這一格刻意留白，造一個假的等於造假這個產品唯一存在的理由
+- **接真實資料時不會出現「做了卻沒效果」**：後端沒有能力重測的基準與重測，少了兩次測量就無從比較——這一格刻意留白，造一個假的等於造假這個產品唯一存在的理由
 - **每一條 live 分支都判為缺少錨點**：後端沒有錨點模型。準則本身是對的，旁邊的處方仍是示範資料
-- **其他未對映、維持示範資料的部分**：替代路徑、教練追問、Role Model 自由輸入、Apple Health 匯入、Horizon 的季度換算，以及對帳敘述（`POST /v1/reconciliations` 已可用，但頁面上沒有一個控制項在要求那個決定）——逐項列在 [`guru-app/docs/API.md`](https://github.com/Quasar-Gang/guru-app/blob/main/docs/API.md)
+- **其他未對映、維持示範資料的部分**：替代路徑、教練追問、Role Model 自由輸入、Apple Health 匯入、Horizon 的季度換算，以及對帳敘述（`POST /v1/reconciliations` 已可用，但頁面上沒有一個控制項在要求那個決定）——逐項列在 [`frontend/docs/API.md`](frontend/docs/API.md)
 - **只有簽核會寫回後端**：接受草案會把計畫轉為 active（`PUT /v1/plans/{id}/status`），刪除與週檢查仍只是前端狀態
 - **一次渲染要讀 11 次**，後端限流 60 rpm，因此組好的 snapshot 快取 30 秒；每一段各自 fallback 並記錄在伺服器日誌，避免一段掛掉就白掉整頁
 - **金錢面向沒有資料來源**：信用卡帳單匯入不在這一輪範圍，調度的金錢軸目前由使用者自行宣告
 - **約束準則需要兩到三季的歷史**才有東西可比，因此顯示為「尚無法判斷」，而不是藏起來
 - **匯出只有 Google Calendar**：Google Sheets 的授權範圍已申請但尚未實作，Notion 也未實作
 - **Reviewer 仍以 Hypothesis 上標記的回顧日期觸發**，行為偏移偵測尚未實作；這一項與另外五項刻意未決的問題列在 [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md) 的待決問題
-- **展示用的三頁原型跑的是前端假資料**，與已接上後端的 `guru-app` 是兩份東西
+- **展示用的三頁原型跑的是前端假資料**，與已接上後端的 `frontend/` 是兩份東西
 
 **後續方向**
 
-- 在 `guru-core` 補上能力重測（基準＋重測）與錨點模型——這兩項一補，「做了卻沒效果」與錨點處方就能對到真實資料
+- 在後端補上能力重測（基準＋重測）與錨點模型——這兩項一補，「做了卻沒效果」與錨點處方就能對到真實資料
 - 補上登入流程，讓 app 不再只讀伺服器端設定的那一個帳號
 - 把 Reviewer 從固定的回顧日期改為行為偏移偵測，讓它在真正需要時才出現
 - 前端補上自寫 Role Model 樣板的介面——後端的 `POST /v1/role-models` 已經支援，且同樣要求寫出代價

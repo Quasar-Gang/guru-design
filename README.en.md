@@ -14,7 +14,7 @@ and time, and adjusts the pace through continuous feedback.
 [![Prototype](https://img.shields.io/badge/prototype-live-0F9D58)](https://wu0h9625-boop.github.io/guru-intake-prototype/)
 ![License](https://img.shields.io/badge/license-proprietary-A31515)
 
-[Backend `guru-core`](https://github.com/Quasar-Gang/guru-core) · [Frontend `guru-app`](https://github.com/Quasar-Gang/guru-app) · [Prototype](https://wu0h9625-boop.github.io/guru-intake-prototype/) · [Video](https://www.youtube.com/watch?v=vP_6S0C3R7Q)
+[Backend `backend/`](backend) · [Frontend `frontend/`](frontend) · [Prototype](https://wu0h9625-boop.github.io/guru-intake-prototype/) · [Video](https://www.youtube.com/watch?v=vP_6S0C3R7Q)
 
 </div>
 
@@ -88,7 +88,7 @@ Two flows, one for each cost above.
 
 | Layer | Component | Responsibility |
 |---|---|---|
-| **Frontend** | [`guru-app`](https://github.com/Quasar-Gang/guru-app) | Upload UI, Report views, Role Model selection, daily tasks and progress check-in |
+| **Frontend** | Web app ([`frontend/`](frontend)) | Upload UI, Report views, Role Model selection, daily tasks and progress check-in |
 | **Backend · API** | API Service | Auth, OAuth, upload and parsing, every app-facing endpoint, job dispatch |
 | **Backend · planning** | Plan Engine | Milestone tree, Task generation, **deterministic** scheduling and rescheduling |
 | **Backend · review** | Reviewer | Reads task progress on a period, diagnoses what is blocking, and re-triggers analysis when needed |
@@ -101,10 +101,25 @@ Two flows, one for each cost above.
 comparison are deterministic code — the same inputs must give the same result, or "was this
 blocked by the task being too big or by not enough time?" is a comparison against noise.
 
-The full domain model, invariants, queue jobs and LLM boundary are in
-[`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md). The implementation lives in two repositories:
-[`guru-core`](https://github.com/Quasar-Gang/guru-core) for the backend and
-[`guru-app`](https://github.com/Quasar-Gang/guru-app) for the frontend.
+### Going deeper
+
+This README stops at why the system is shaped this way and what it looks like. The full
+specification underneath it is **[`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)** — the domain model,
+the invariants, the queue jobs and the LLM boundary all live there.
+
+| What you want | Where to read it |
+|---|---|
+| The two flows, step by step | [`SYSTEM-DESIGN.md` · The two flows](SYSTEM-DESIGN.md#the-two-flows) |
+| What each noun means exactly (Profile / Report / Role Model / Milestone …) | [`SYSTEM-DESIGN.md` · The language](SYSTEM-DESIGN.md#the-language) |
+| Aggregates, tables and invariants | [`SYSTEM-DESIGN.md` · Domain model](SYSTEM-DESIGN.md#domain-model) |
+| Service split, queue jobs and the LLM boundary | [`SYSTEM-DESIGN.md` · System design](SYSTEM-DESIGN.md#system-design) |
+| The deliberately open questions | [`SYSTEM-DESIGN.md` · Open questions](SYSTEM-DESIGN.md#open-questions) |
+| Backend hexagonal layers, configuration, LLM adapters | [`backend/README.md`](backend/README.md) |
+| The schema as built, and the OpenAPI spec | [`backend/docs/db/schema.md`](backend/docs/db/schema.md) · [`backend/docs/api/`](backend/docs/api) |
+| The three frontend stations, the rule engine, what maps to the backend | [`frontend/README.md`](frontend/README.md) · [`frontend/docs/API.md`](frontend/docs/API.md) |
+
+Both implementations live in this repository: the backend in [`backend/`](backend), the
+frontend in [`frontend/`](frontend).
 
 ## Technologies used
 
@@ -113,7 +128,7 @@ The full domain model, invariants, queue jobs and LLM boundary are in
 | AI model | xAI Grok (`grok-4.6`, default) | Classify Profile signals, produce the Reports, score Role Model fit, produce the plan template, narrate the review |
 | AI model | Anthropic Claude / local Ollama · vLLM (swappable) | As above; switched by the `LLM_ADAPTER` and `LLM_BASE_URL` environment variables, no code change |
 | Frontend | React 19 · Next 16 (vinext) · Vite · TypeScript 5.9 | Web client — three pages for the three stations (`/`, `/plan`, `/ledger`) |
-| Frontend | React Server Components · `snapshot-adapter` | All three stations read `guru-core` in a server component, so the bearer token never reaches the browser; the adapter is the one place the two vocabularies meet |
+| Frontend | React Server Components · `snapshot-adapter` | All three stations read the backend in a server component, so the bearer token never reaches the browser; the adapter is the one place the two vocabularies meet |
 | Frontend | mist design system (vendored CSS) · Vitest | Interface styling, plus the rule-engine, backend-mapping and server-render tests |
 | Frontend | Cloudflare Workers · Wrangler | Frontend deployment, built to Worker-compatible ESM; in production the token is a Worker secret |
 | Backend | Python 3.12 · FastAPI · Pydantic 2 · SQLAlchemy 2 (async) · Alembic | The three services' API and data access |
@@ -124,15 +139,19 @@ The full domain model, invariants, queue jobs and LLM boundary are in
 | Engineering | ruff · mypy --strict · import-linter · pytest | The hexagonal dependency direction is enforced in CI — a reverse import fails the build |
 | Deployment | Docker Compose · DigitalOcean Droplet · Caddy | One image; the entrypoint decides which role it runs |
 | External | Google OAuth 2.0 · Google Calendar API | Sign-in, and calendar import / export |
-| Sponsor tech | _TODO: fill in the sponsor technologies actually used, and what for_ | |
 
 ## Installation and running
 
 Requires Python 3.12, [uv](https://docs.astral.sh/uv/), Node.js ≥ 22.13, PostgreSQL and Redis.
+Backend and frontend live in this one repository; `backend/` and `frontend/` build independently.
 
 ```bash
-# 1 · Backend, guru-core
-git clone git@github.com:Quasar-Gang/guru-core.git && cd guru-core
+git clone git@github.com:Quasar-Gang/life-guru.git && cd life-guru
+```
+
+```bash
+# 1 · Backend, backend/
+cd backend
 uv sync
 cp .env.example .env                  # set DATABASE_URL / REDIS_URL / LLM_API_KEY / GOOGLE_CLIENT_ID
 uv run alembic upgrade head           # create the schema
@@ -148,11 +167,12 @@ uv run python -m cmd.catalog_server  # HTTP, port 8001
 # or the whole stack in containers (build + up + migrate + seed)
 make deploy env=local                 # postgres / redis publish on 5433 / 6380 to avoid collisions
 make deploy-smoke env=local           # the whole loop end to end
+make deploy-down env=local            # tear the stack down
 ```
 
 ```bash
-# 2 · Frontend, guru-app
-git clone git@github.com:Quasar-Gang/guru-app.git && cd guru-app
+# 2 · Frontend, frontend/
+cd frontend
 npm install
 cp .env.example .env.local            # GURU_API_BASE_URL=http://127.0.0.1:8000
                                       # GURU_API_TOKEN=<bearer token from POST /v1/auth/google>
@@ -169,8 +189,12 @@ npm test                              # language check → typecheck → lint �
 > demonstration dataset and all three stations stay fully interactive — that is the demo
 > path, not a broken state. `GURU_API_BASE_URL` must be an absolute `http(s)` origin;
 > anything else is ignored and the fixture is used.
-> For a local token, set `ALLOW_FAKE_LOGIN=1` in `guru-core` and sign in with
+> For a local token, set `ALLOW_FAKE_LOGIN=1` in `backend/.env` and sign in with
 > `{"code": "fake:<email>"}` (**local only**).
+>
+> The backend's `LLM_ADAPTER` defaults to `fake`, so the whole loop runs without a key. To
+> reach a real provider set it to `openai_compat` and fill in `LLM_API_KEY` (for the
+> container path, put those in `backend/deployment/local/.env.local`).
 
 ## Demo
 
@@ -182,20 +206,20 @@ npm test                              # language check → typecheck → lint �
 **Current limitations**
 
 - **No sign-in.** The token is configured server-side, so the app reads one account; adding OAuth is a workflow, not a field
-- **No "done, but no effect" row against live data.** `guru-core` models no capability baseline and no retest, and without two measurements there is nothing to compare — the cell is left empty rather than faked, because faking it would fake the one outcome this product exists to show
+- **No "done, but no effect" row against live data.** The backend models no capability baseline and no retest, and without two measurements there is nothing to compare — the cell is left empty rather than faked, because faking it would fake the one outcome this product exists to show
 - **Every live branch reads as an anchor gap**, because the backend models no anchors. The criterion is working; the prescriptions beside it are still fixture
-- **What else does not map stays fixture**: alternative paths, the coach's challenges, free-text Role Model input, Apple Health import, the horizon's quarter arithmetic, and the reconciliation narrative (`POST /v1/reconciliations` is ready, but no control on these pages asks for the decision it carries) — each one named in [`guru-app/docs/API.md`](https://github.com/Quasar-Gang/guru-app/blob/main/docs/API.md)
+- **What else does not map stays fixture**: alternative paths, the coach's challenges, free-text Role Model input, Apple Health import, the horizon's quarter arithmetic, and the reconciliation narrative (`POST /v1/reconciliations` is ready, but no control on these pages asks for the decision it carries) — each one named in [`frontend/docs/API.md`](frontend/docs/API.md)
 - **Only the sign-off writes back**: accepting the draft activates the plan (`PUT /v1/plans/{id}/status`); deletions and the weekly proofread are frontend state
 - **One render costs eleven reads** against a backend that rate-limits at 60 requests a minute, so the assembled snapshot is held for 30 seconds; each section falls back on its own and logs it, so one unavailable read never blanks a page
 - **The money dimension has no source**: card-statement import is out of scope for this round, so the dispatch money axis is declared by the user
 - **The constraint criterion needs two to three quarters of history** before it has anything to compare, so it is shown as unavailable rather than hidden
 - **Export is Google Calendar only**: the Google Sheets scope is requested but the export is not implemented, and neither is Notion
 - **The Reviewer still fires on the review date stamped on the Hypothesis**; behaviour-drift detection is not implemented — that question and five other deliberately open ones are listed in [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)
-- **The three published prototype pages run on frontend fixtures**, and are a separate artefact from the now backend-connected `guru-app`
+- **The three published prototype pages run on frontend fixtures**, and are a separate artefact from the now backend-connected `frontend/`
 
 **Future work**
 
-- Add the capability baseline and retest, and an anchor model, to `guru-core` — those two together are what let "done, but no effect" and the anchor prescriptions run on live data
+- Add the capability baseline and retest, and an anchor model, to the backend — those two together are what let "done, but no effect" and the anchor prescriptions run on live data
 - Add a sign-in flow, so the app is no longer limited to the one server-configured account
 - Move the Reviewer from a fixed review date to behaviour-drift detection, so it appears only when it is actually needed
 - Give the frontend a UI for user-authored Role Model templates — the backend's `POST /v1/role-models` already supports them, on the same terms and with the same cost rule

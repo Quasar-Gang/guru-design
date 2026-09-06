@@ -687,4 +687,6 @@ Deliberately unresolved — each one changes the model, and each is the team's c
 | | |
 |---|---|
 | [`README.md`](README.md) · [`README.en.md`](README.en.md) | Problem, core features and architecture (繁體中文 / English) |
-| [`REFACTOR-PLAN.md`](REFACTOR-PLAN.md) | Migrating `guru-core` / `guru-app` onto this design |
+| [`backend/README.md`](backend/README.md) | The backend: hexagonal layers, configuration, the LLM adapters |
+| [`backend/docs/db/schema.md`](backend/docs/db/schema.md) · [`backend/docs/api/`](backend/docs/api) | The schema as built, and the exported OpenAPI spec |
+| [`frontend/README.md`](frontend/README.md) · [`frontend/docs/API.md`](frontend/docs/API.md) | The three stations, the rule engine, and what maps to the backend |
