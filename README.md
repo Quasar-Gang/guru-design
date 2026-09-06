@@ -107,14 +107,18 @@ Life Guru 要降低兩種成本：
 
 | 類型 | 技術／服務 | 用途 |
 | --- | --- | --- |
-| AI 模型 | xAI Grok（`grok-4.6`，預設） | 分析 Profile 產生 Report、推薦 Role Model、產生計畫模板 |
-| AI 模型 | Anthropic Claude／本地 Ollama · vLLM（可切換） | 同上；透過 `LLM_ADAPTER` 環境變數切換，不需改動程式碼 |
-| 前端 | React 19 · Next 16（vinext）· Vite · Tailwind v4 | 網頁客戶端 |
-| 前端 | Cloudflare Workers | 前端部署 |
-| 後端 | Python 3.12 · FastAPI · SQLAlchemy 2（async）· Alembic | API 服務與資料存取 |
-| 後端 | ARQ · Redis 7 | 非同步工作佇列（解析、產生計畫、重新規劃、匯出） |
-| 後端 | PostgreSQL 16 | 主要資料庫 |
-| 後端 | Cloudflare R2 | 上傳檔案物件儲存 |
+| AI 模型 | xAI Grok（`grok-4.6`，預設） | 分類 Profile 訊號、產生 Report、評分 Role Model 契合度、產生計畫模板、敘述回顧結果 |
+| AI 模型 | Anthropic Claude／本地 Ollama · vLLM（可切換） | 同上；以 `LLM_ADAPTER`、`LLM_BASE_URL` 環境變數切換，不需改動程式碼 |
+| 前端 | React 19 · Next 16（vinext）· Vite · TypeScript 5.9 | 網頁客戶端，三個頁面對應三個站點（`/`、`/plan`、`/ledger`） |
+| 前端 | mist 設計系統（vendored CSS）· Vitest | 介面樣式，以及規則引擎與伺服器渲染測試 |
+| 前端 | Cloudflare Workers · Wrangler | 前端部署，建置為 Worker 相容的 ESM |
+| 後端 | Python 3.12 · FastAPI · Pydantic 2 · SQLAlchemy 2（async）· Alembic | 三個服務的 API 與資料存取 |
+| 後端 | ARQ · Redis 7 | 非同步工作佇列（`import.parse`／`profile.build`／`direction.run`／`plan.generate`／`reconcile.run`／`export.push`） |
+| 後端 | PostgreSQL 16 | 主要資料庫，所有狀態的唯一真相 |
+| 後端 | pypdf · python-docx · openpyxl · icalendar · BeautifulSoup · markdown-it-py | 上傳檔案解析（7 種 parser） |
+| 後端 | Cloudflare R2／本地檔案系統（可切換） | 上傳檔案物件儲存，以 `STORAGE_BACKEND` 切換 |
+| 工程品質 | ruff · mypy --strict · import-linter · pytest | 六邊形架構的依賴方向由 import-linter 在 CI 擋下，反向 import 直接建置失敗 |
+| 部署 | Docker Compose · DigitalOcean Droplet · Caddy | 單一映像檔，由 entrypoint 決定跑哪一個角色 |
 | 外部服務 | Google OAuth 2.0 · Google Calendar API | 登入，以及行事曆匯入／匯出 |
 | Sponsor 技術 | _TODO：請填入實際使用的 Sponsor 技術與用途_ | |
 
@@ -128,17 +132,18 @@ git clone git@github.com:Quasar-Gang/guru-core.git && cd guru-core
 uv sync
 cp .env.example .env                  # 設定 DATABASE_URL / REDIS_URL / LLM_API_KEY / GOOGLE_CLIENT_ID
 uv run alembic upgrade head           # 建立資料庫 schema
-uv run python -m cmd.seed_role_models # 載入 Role Model 樣板
+uv run python -m cmd.seed_role_models # 載入六個 Role Model 樣板
 make check                            # ruff → mypy --strict → import-linter → pytest
 
 # 啟動四個 process
-uv run python -m cmd.api_server          # HTTP, port 8000
-uv run python -m cmd.api_worker          # import.parse · export.push
-uv run python -m cmd.plan_engine_worker  # plan.generate · continue · revise
-uv run python -m cmd.role_model_server   # HTTP, port 8001
+uv run python -m cmd.api_server      # HTTP, port 8000
+uv run python -m cmd.api_worker      # import.parse · export.push
+uv run python -m cmd.engine_worker   # profile.build · direction.run · plan.generate · reconcile.run
+uv run python -m cmd.catalog_server  # HTTP, port 8001
 
 # 或用容器一次啟動（build + up + migrate + seed）
-make deploy env=local
+make deploy env=local                 # postgres／redis 發佈在 5433 / 6380，避免與本機衝突
+make deploy-smoke env=local           # 端到端跑完整條流程
 ```
 
 ```bash
@@ -146,15 +151,17 @@ make deploy env=local
 git clone git@github.com:Quasar-Gang/guru-app.git && cd guru-app
 npm install
 cp .env.example .env.local            # NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-npm run dev                           # http://localhost:3100
+npm run dev                           # 開發網址見終端機輸出
+npm test                              # 語言檢查 → typecheck → lint → build → vitest
 ```
 
-> 未設定後端時，前端會退回內建的示範資料，互動仍可操作。
+> `.env.local` 可以留空：未設定後端時，前端會使用內建的示範資料集，三個站點的互動仍然完整可操作。
+> `NEXT_PUBLIC_API_BASE_URL` 必須是絕對的 `http(s)` 位址，其他值一律忽略並改用示範資料。
 
 ## 作品展示
 
 - 作品展示網址：<https://wu0h9625-boop.github.io/guru-intake-prototype/>（流程一的上傳與方向原型）
-- 評選影片：_TODO：請填入影片連結_
+- 評選影片：<https://www.youtube.com/watch?v=vP_6S0C3R7Q>
 
 ## 限制與未來工作
 

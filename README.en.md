@@ -106,14 +106,18 @@ The full domain model, invariants, queue jobs and LLM boundary are in
 
 | Type | Technology / service | Purpose |
 | --- | --- | --- |
-| AI model | xAI Grok (`grok-4.6`, default) | Analyze the Profile into Reports, recommend Role Models, produce the plan template |
-| AI model | Anthropic Claude / local Ollama · vLLM (swappable) | As above; switched by the `LLM_ADAPTER` environment variable, no code change |
-| Frontend | React 19 · Next 16 (vinext) · Vite · Tailwind v4 | Web client |
-| Frontend | Cloudflare Workers | Frontend deployment |
-| Backend | Python 3.12 · FastAPI · SQLAlchemy 2 (async) · Alembic | API service and data access |
-| Backend | ARQ · Redis 7 | Async job queues (parse, generate, revise, export) |
-| Backend | PostgreSQL 16 | Primary database |
-| Backend | Cloudflare R2 | Object storage for uploads |
+| AI model | xAI Grok (`grok-4.6`, default) | Classify Profile signals, produce the Reports, score Role Model fit, produce the plan template, narrate the review |
+| AI model | Anthropic Claude / local Ollama · vLLM (swappable) | As above; switched by the `LLM_ADAPTER` and `LLM_BASE_URL` environment variables, no code change |
+| Frontend | React 19 · Next 16 (vinext) · Vite · TypeScript 5.9 | Web client — three pages for the three stations (`/`, `/plan`, `/ledger`) |
+| Frontend | mist design system (vendored CSS) · Vitest | Interface styling, plus the rule-engine and server-render tests |
+| Frontend | Cloudflare Workers · Wrangler | Frontend deployment, built to Worker-compatible ESM |
+| Backend | Python 3.12 · FastAPI · Pydantic 2 · SQLAlchemy 2 (async) · Alembic | The three services' API and data access |
+| Backend | ARQ · Redis 7 | Async job queues (`import.parse` / `profile.build` / `direction.run` / `plan.generate` / `reconcile.run` / `export.push`) |
+| Backend | PostgreSQL 16 | Primary database, authoritative for all state |
+| Backend | pypdf · python-docx · openpyxl · icalendar · BeautifulSoup · markdown-it-py | Upload parsing (7 parsers) |
+| Backend | Cloudflare R2 / local filesystem (swappable) | Object storage for uploads, switched by `STORAGE_BACKEND` |
+| Engineering | ruff · mypy --strict · import-linter · pytest | The hexagonal dependency direction is enforced in CI — a reverse import fails the build |
+| Deployment | Docker Compose · DigitalOcean Droplet · Caddy | One image; the entrypoint decides which role it runs |
 | External | Google OAuth 2.0 · Google Calendar API | Sign-in, and calendar import / export |
 | Sponsor tech | _TODO: fill in the sponsor technologies actually used, and what for_ | |
 
@@ -127,17 +131,18 @@ git clone git@github.com:Quasar-Gang/guru-core.git && cd guru-core
 uv sync
 cp .env.example .env                  # set DATABASE_URL / REDIS_URL / LLM_API_KEY / GOOGLE_CLIENT_ID
 uv run alembic upgrade head           # create the schema
-uv run python -m cmd.seed_role_models # load the Role Model templates
+uv run python -m cmd.seed_role_models # load the six Role Model templates
 make check                            # ruff → mypy --strict → import-linter → pytest
 
 # four processes
-uv run python -m cmd.api_server          # HTTP, port 8000
-uv run python -m cmd.api_worker          # import.parse · export.push
-uv run python -m cmd.plan_engine_worker  # plan.generate · continue · revise
-uv run python -m cmd.role_model_server   # HTTP, port 8001
+uv run python -m cmd.api_server      # HTTP, port 8000
+uv run python -m cmd.api_worker      # import.parse · export.push
+uv run python -m cmd.engine_worker   # profile.build · direction.run · plan.generate · reconcile.run
+uv run python -m cmd.catalog_server  # HTTP, port 8001
 
 # or the whole stack in containers (build + up + migrate + seed)
-make deploy env=local
+make deploy env=local                 # postgres / redis publish on 5433 / 6380 to avoid collisions
+make deploy-smoke env=local           # the whole loop end to end
 ```
 
 ```bash
@@ -145,15 +150,19 @@ make deploy env=local
 git clone git@github.com:Quasar-Gang/guru-app.git && cd guru-app
 npm install
 cp .env.example .env.local            # NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-npm run dev                           # http://localhost:3100
+npm run dev                           # the dev URL is printed in the terminal
+npm test                              # language check → typecheck → lint → build → vitest
 ```
 
-> With no backend configured the frontend falls back to built-in demo data and stays interactive.
+> `.env.local` may stay empty: with no backend configured the frontend runs on its built-in
+> demonstration dataset and all three stations stay fully interactive.
+> `NEXT_PUBLIC_API_BASE_URL` must be an absolute `http(s)` origin; anything else is ignored
+> and the demo data is used instead.
 
 ## Demo
 
 - Demo URL: <https://wu0h9625-boop.github.io/guru-intake-prototype/> (the intake-and-direction prototype for Flow 1)
-- Judging video: _TODO: add the video link_
+- Judging video: <https://www.youtube.com/watch?v=vP_6S0C3R7Q>
 
 ## Limitations and future work
 
