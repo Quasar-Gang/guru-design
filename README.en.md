@@ -14,6 +14,8 @@ and time, and adjusts the pace through continuous feedback.
 [![Prototype](https://img.shields.io/badge/prototype-live-0F9D58)](https://wu0h9625-boop.github.io/guru-intake-prototype/)
 ![License](https://img.shields.io/badge/license-proprietary-A31515)
 
+[Backend `guru-core`](https://github.com/Quasar-Gang/guru-core) · [Frontend `guru-app`](https://github.com/Quasar-Gang/guru-app) · [Prototype](https://wu0h9625-boop.github.io/guru-intake-prototype/) · [Video](https://www.youtube.com/watch?v=vP_6S0C3R7Q)
+
 </div>
 
 ---
@@ -86,7 +88,7 @@ Two flows, one for each cost above.
 
 | Layer | Component | Responsibility |
 |---|---|---|
-| **Frontend** | `guru-app` | Upload UI, Report views, Role Model selection, daily tasks and progress check-in |
+| **Frontend** | [`guru-app`](https://github.com/Quasar-Gang/guru-app) | Upload UI, Report views, Role Model selection, daily tasks and progress check-in |
 | **Backend · API** | API Service | Auth, OAuth, upload and parsing, every app-facing endpoint, job dispatch |
 | **Backend · planning** | Plan Engine | Milestone tree, Task generation, **deterministic** scheduling and rescheduling |
 | **Backend · review** | Reviewer | Reads task progress on a period, diagnoses what is blocking, and re-triggers analysis when needed |
@@ -100,7 +102,9 @@ comparison are deterministic code — the same inputs must give the same result,
 blocked by the task being too big or by not enough time?" is a comparison against noise.
 
 The full domain model, invariants, queue jobs and LLM boundary are in
-[`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md).
+[`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md). The implementation lives in two repositories:
+[`guru-core`](https://github.com/Quasar-Gang/guru-core) for the backend and
+[`guru-app`](https://github.com/Quasar-Gang/guru-app) for the frontend.
 
 ## Technologies used
 
@@ -109,8 +113,9 @@ The full domain model, invariants, queue jobs and LLM boundary are in
 | AI model | xAI Grok (`grok-4.6`, default) | Classify Profile signals, produce the Reports, score Role Model fit, produce the plan template, narrate the review |
 | AI model | Anthropic Claude / local Ollama · vLLM (swappable) | As above; switched by the `LLM_ADAPTER` and `LLM_BASE_URL` environment variables, no code change |
 | Frontend | React 19 · Next 16 (vinext) · Vite · TypeScript 5.9 | Web client — three pages for the three stations (`/`, `/plan`, `/ledger`) |
-| Frontend | mist design system (vendored CSS) · Vitest | Interface styling, plus the rule-engine and server-render tests |
-| Frontend | Cloudflare Workers · Wrangler | Frontend deployment, built to Worker-compatible ESM |
+| Frontend | React Server Components · `snapshot-adapter` | All three stations read `guru-core` in a server component, so the bearer token never reaches the browser; the adapter is the one place the two vocabularies meet |
+| Frontend | mist design system (vendored CSS) · Vitest | Interface styling, plus the rule-engine, backend-mapping and server-render tests |
+| Frontend | Cloudflare Workers · Wrangler | Frontend deployment, built to Worker-compatible ESM; in production the token is a Worker secret |
 | Backend | Python 3.12 · FastAPI · Pydantic 2 · SQLAlchemy 2 (async) · Alembic | The three services' API and data access |
 | Backend | ARQ · Redis 7 | Async job queues (`import.parse` / `profile.build` / `direction.run` / `plan.generate` / `reconcile.run` / `export.push`) |
 | Backend | PostgreSQL 16 | Primary database, authoritative for all state |
@@ -149,37 +154,54 @@ make deploy-smoke env=local           # the whole loop end to end
 # 2 · Frontend, guru-app
 git clone git@github.com:Quasar-Gang/guru-app.git && cd guru-app
 npm install
-cp .env.example .env.local            # NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+cp .env.example .env.local            # GURU_API_BASE_URL=http://127.0.0.1:8000
+                                      # GURU_API_TOKEN=<bearer token from POST /v1/auth/google>
 npm run dev                           # the dev URL is printed in the terminal
 npm test                              # language check → typecheck → lint → build → vitest
 ```
 
+> **Both variables are server-side only**, which is why neither carries a `NEXT_PUBLIC_`
+> prefix — that would ship the token to the browser. `vite.config.ts` passes them to the
+> Worker as vars and every station reads its data in a server component; a real deployment
+> uses a Worker secret instead.
+>
 > `.env.local` may stay empty: with no backend configured the frontend runs on its built-in
-> demonstration dataset and all three stations stay fully interactive.
-> `NEXT_PUBLIC_API_BASE_URL` must be an absolute `http(s)` origin; anything else is ignored
-> and the demo data is used instead.
+> demonstration dataset and all three stations stay fully interactive — that is the demo
+> path, not a broken state. `GURU_API_BASE_URL` must be an absolute `http(s)` origin;
+> anything else is ignored and the fixture is used.
+> For a local token, set `ALLOW_FAKE_LOGIN=1` in `guru-core` and sign in with
+> `{"code": "fake:<email>"}` (**local only**).
 
 ## Demo
 
-- Demo URL: <https://wu0h9625-boop.github.io/guru-intake-prototype/> (the intake-and-direction prototype for Flow 1)
+- Demo URL: <https://wu0h9625-boop.github.io/guru-intake-prototype/> (all three stations: intake and direction, goal-tree draft, quarterly reconciliation)
 - Judging video: <https://www.youtube.com/watch?v=vP_6S0C3R7Q>
 
 ## Limitations and future work
 
 **Current limitations**
 
-- Flow 1's **intake and direction** is verified end to end by the prototype; **Flow 2 (review task progress) is designed, not yet prototype-verified**
-- The prototype runs on demo data — real Google Calendar and résumé parsing are not wired in
-- Both code repositories (`guru-core` / `guru-app`) currently implement an earlier goal-first model and have not yet converged on the design described here
-- The Reviewer's trigger threshold — and how it tells "task too big" from "not enough time" from "the goal needs adjusting" — is undecided; see the open questions in [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)
-- Export supports Google Calendar and Markdown only; Notion and Google Sheets are not implemented
+- **No sign-in.** The token is configured server-side, so the app reads one account; adding OAuth is a workflow, not a field
+- **No "done, but no effect" row against live data.** `guru-core` models no capability baseline and no retest, and without two measurements there is nothing to compare — the cell is left empty rather than faked, because faking it would fake the one outcome this product exists to show
+- **Every live branch reads as an anchor gap**, because the backend models no anchors. The criterion is working; the prescriptions beside it are still fixture
+- **What else does not map stays fixture**: alternative paths, the coach's challenges, free-text Role Model input, Apple Health import, the horizon's quarter arithmetic, and the reconciliation narrative (`POST /v1/reconciliations` is ready, but no control on these pages asks for the decision it carries) — each one named in [`guru-app/docs/API.md`](https://github.com/Quasar-Gang/guru-app/blob/main/docs/API.md)
+- **Only the sign-off writes back**: accepting the draft activates the plan (`PUT /v1/plans/{id}/status`); deletions and the weekly proofread are frontend state
+- **One render costs eleven reads** against a backend that rate-limits at 60 requests a minute, so the assembled snapshot is held for 30 seconds; each section falls back on its own and logs it, so one unavailable read never blanks a page
+- **The money dimension has no source**: card-statement import is out of scope for this round, so the dispatch money axis is declared by the user
+- **The constraint criterion needs two to three quarters of history** before it has anything to compare, so it is shown as unavailable rather than hidden
+- **Export is Google Calendar only**: the Google Sheets scope is requested but the export is not implemented, and neither is Notion
+- **The Reviewer still fires on the review date stamped on the Hypothesis**; behaviour-drift detection is not implemented — that question and five other deliberately open ones are listed in [`SYSTEM-DESIGN.md`](SYSTEM-DESIGN.md)
+- **The three published prototype pages run on frontend fixtures**, and are a separate artefact from the now backend-connected `guru-app`
 
 **Future work**
 
-- Move the Reviewer from a fixed period to behaviour-drift detection, so it appears only when it is actually needed
-- Let users write their own Role Model templates rather than only picking from the six
+- Add the capability baseline and retest, and an anchor model, to `guru-core` — those two together are what let "done, but no effect" and the anchor prescriptions run on live data
+- Add a sign-in flow, so the app is no longer limited to the one server-configured account
+- Move the Reviewer from a fixed review date to behaviour-drift detection, so it appears only when it is actually needed
+- Give the frontend a UI for user-authored Role Model templates — the backend's `POST /v1/role-models` already supports them, on the same terms and with the same cost rule
 - Card-statement import, to cover the money dimension
 - Calendar change detection and automatic rescheduling
+- Vision and the five-year layer: intake produces a one-year hypothesis today, and the longer scales are not covered
 
 ## Third-party services, data and assets
 
